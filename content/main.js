@@ -1,10 +1,13 @@
 class Home {
+	static id = undefined;
+
 	static start() {
 		this.cache = {
 			items: undefined,
 			item: new Map(),
 		};
-		this.itemQuery = { ImageTypes: "Backdrop", EnableImageTypes: "Logo,Backdrop", IncludeItemTypes: "Movie,Series", SortBy: "ProductionYear, PremiereDate, SortName", Recursive: true, ImageTypeLimit: 1, Limit: 10, Fields: "ProductionYear", SortOrder: "Descending", EnableUserData: false, EnableTotalRecordCount: false };
+		// 只要评分在 PG-13 以下的电影 https://github.com/MediaBrowser/Emby/blob/master/MediaBrowser.Api/UserLibrary/BaseItemsRequest.cs#L10
+		this.itemQuery = { ImageTypes: "Backdrop", EnableImageTypes: "Logo,Backdrop", IncludeItemTypes: "Movie,Series", SortBy: "ProductionYear, PremiereDate, SortName", Recursive: true, ImageTypeLimit: 1, Limit: 10, Fields: "ProductionYear", SortOrder: "Descending", EnableUserData: false, EnableTotalRecordCount: false, MaxOfficialRating: "PG-13", HasOfficialRating: true };
 		this.coverOptions = { type: "Backdrop", maxWidth: 3000 };
 		this.logoOptions = { type: "Logo", maxWidth: 3000 };
 		this.initStart = false;
@@ -19,6 +22,7 @@ class Home {
 				}
 				if (!this.initStart && $(".section0 .card").length != 0 && $(".view:not(.hide) .misty-banner").length == 0) {
 					this.initStart = true;
+					this.id = ApiClient._serverInfo.Id;
 					this.init();
 				}
 			}
@@ -33,7 +37,6 @@ class Home {
 		$(".misty-loading h1").text(serverName).addClass("active");
 		// Banner
 		await this.initBanner();
-		this.initEvent();
 	}
 
 	/* 插入Loading */
@@ -154,8 +157,9 @@ class Home {
 		// 只判断第一张海报加载完毕, 优化加载速度
 		await new Promise((resolve, reject) => {
 			let waitLoading = setInterval(() => {
-				if (document.querySelector(".misty-banner-cover").complete) {
+				if (document.querySelector(".misty-banner-cover") && document.querySelector(".misty-banner-cover").complete) {
 					clearInterval(waitLoading);
+					this.initEvent();
 					resolve();
 				}
 			}, 16);
@@ -191,7 +195,14 @@ class Home {
 	}
 
 	/* 初始事件 */
-	static initEvent() {
+	static async initEvent() {
+		// 这里目前来说已经是可以定位到元素的
+		let librarys = document.querySelectorAll(".view:not(.hide) .section0 .card");
+		librarys.forEach(library => {
+			library.setAttribute("data-serverid", this.id);
+			library.setAttribute("data-type", "CollectionFolder");
+		});
+
 		// 通过注入方式, 方可调用appRouter函数, 以解决Content-Script window对象不同步问题
 		const script = `
 		// 挂载appRouter
@@ -205,6 +216,8 @@ class Home {
 		});
 		`;
 		this.injectCode(script);
+
+		
 	}
 }
 
