@@ -1,5 +1,4 @@
 class Home {
-	static id = undefined;
 
 	static start() {
 		this.cache = {
@@ -7,7 +6,7 @@ class Home {
 			item: new Map(),
 		};
 		// 只要评分在 PG-13 以下的电影 https://github.com/MediaBrowser/Emby/blob/master/MediaBrowser.Api/UserLibrary/BaseItemsRequest.cs#L10
-		this.itemQuery = { ImageTypes: "Backdrop", EnableImageTypes: "Logo,Backdrop", IncludeItemTypes: "Movie,Series", SortBy: "ProductionYear, PremiereDate, SortName", Recursive: true, ImageTypeLimit: 1, Limit: 10, Fields: "ProductionYear", SortOrder: "Descending", EnableUserData: false, EnableTotalRecordCount: false, MaxOfficialRating: "PG-13", HasOfficialRating: true };
+		this.itemQuery = { ImageTypes: "Backdrop", EnableImageTypes: "Logo,Backdrop", IncludeItemTypes: "Movie,Series", SortBy: "Random", Recursive: true, ImageTypeLimit: 1, Limit: 10, Fields: "ProductionYear", SortOrder: "Descending", EnableUserData: false, EnableTotalRecordCount: false, MaxOfficialRating: "PG-13", HasOfficialRating: true };
 		this.coverOptions = { type: "Backdrop", maxWidth: 3000 };
 		this.logoOptions = { type: "Logo", maxWidth: 3000 };
 		this.initStart = false;
@@ -22,7 +21,6 @@ class Home {
 				}
 				if (!this.initStart && $(".section0 .card").length != 0 && $(".view:not(.hide) .misty-banner").length == 0) {
 					this.initStart = true;
-					this.id = ApiClient._serverInfo.Id;
 					this.init();
 				}
 			}
@@ -196,28 +194,33 @@ class Home {
 
 	/* 初始事件 */
 	static async initEvent() {
+
+		const id = await new Promise((resolve, reject) => {
+			const serverId = setInterval(() => {
+				if (ApiClient._serverInfo.Id != undefined) {
+					clearInterval(serverId);
+					resolve(ApiClient._serverInfo.Id);
+				}
+			}, 30)
+		});
+
 		// 这里目前来说已经是可以定位到元素的
 		let librarys = document.querySelectorAll(".view:not(.hide) .section0 .card");
 		librarys.forEach(library => {
-			library.setAttribute("data-serverid", this.id);
+			library.setAttribute("data-serverid", id);
 			library.setAttribute("data-type", "CollectionFolder");
+			library.setAttribute("ondragstart", "return false;");
+			library.setAttribute("ondrop", "return false;");
 		});
 
 		// 通过注入方式, 方可调用appRouter函数, 以解决Content-Script window对象不同步问题
 		const script = `
 		// 挂载appRouter
 		if (!window.appRouter) window.appRouter = (await window.require(["appRouter"]))[0];
-		// 修复library事件参数
-		const serverId = ApiClient._serverInfo.Id,
-			librarys = document.querySelectorAll(".view:not(.hide) .section0 .card");
-		librarys.forEach(library => {
-			library.setAttribute("data-serverid", serverId);
-			library.setAttribute("data-type", "CollectionFolder");
-		});
 		`;
 		this.injectCode(script);
 
-		
+
 	}
 }
 
