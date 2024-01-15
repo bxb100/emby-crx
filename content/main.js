@@ -163,7 +163,17 @@ class Home {
 			}, 16);
 		});
 
-		$(".misty-loading").fadeOut(500, () => $(".misty-loading").remove());
+    try {
+      $(".misty-loading").fadeOut(500, () => $(".misty-loading").remove());
+    } catch {
+      setTimeout(
+        () => {
+          $(".misty-loading").remove();
+        },
+        500
+      )
+    }
+
 		await CommonUtils.sleep(150);
 		// 置入场动画
 		let delay = 80; // 动媒体库画间隔
